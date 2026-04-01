@@ -1,0 +1,27 @@
+outputs/
+data/
+*.hdf5
+*.h5
+*.pkl
+*.pth
+*.pt
+wandb/
+
+# Python
+__pycache__/
+*.egg-info/
+.venv/
+*.pyc
+
+# System
+.DS_Store
+*.swp
+
+# Docker
+docker/tmp/
+
+# Large files
+*.mp4
+*.avi
+
+LIBERO/
