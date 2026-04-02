@@ -25,3 +25,20 @@ docker/tmp/
 *.avi
 
 LIBERO/
+
+# PyCharm
+.idea/
+*.iml
+
+# VS Code
+.vscode/
+
+# Python 
+__pycache__/
+*.py[cod]
+*$py.class
+
+# env
+venv/
+.env/
+env/
