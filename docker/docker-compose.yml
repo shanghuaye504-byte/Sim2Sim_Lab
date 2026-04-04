@@ -1,0 +1,36 @@
+# 本地构建与交互测试
+# 在项目根目录 Sim2Sim_Lab/ 下运行:
+#   docker compose -f docker/docker-compose.yml build
+#   docker compose -f docker/docker-compose.yml run --rm eval bash
+#   docker compose -f docker/docker-compose.yml run --rm eval bash /app/docker/entrypoint.sh
+services:
+  eval:
+    image: your_dockerhub_name/myapp:v1.0   # ← 替换为你的 DockerHub 用户名
+    build:
+      context: ..                            # 项目根目录
+      dockerfile: docker/Dockerfile
+    init: true
+    tty: true
+    network_mode: host
+    volumes:
+      - $PWD:/app
+      - ${OPENPI_DATA_HOME:-~/.cache/openpi}:/app/.cache/openpi
+    environment:
+      - OPENPI_DATA_HOME=/app/.cache/openpi
+      - IS_DOCKER=true
+      - LIBERO_CONFIG_PATH=/opt/libero_config
+      - MUJOCO_GL=${MUJOCO_GL:-egl}
+      - MUJOCO_EGL_DEVICE_ID=0
+      - PYOPENGL_PLATFORM=egl
+      - SERVER_PORT=8000
+      - TASK_SUITE=${TASK_SUITE:-libero_spatial}
+      - NUM_TRIALS=${NUM_TRIALS:-50}
+      - POLICY_CONFIG=${POLICY_CONFIG:-pi05_libero}
+      - POLICY_DIR=${POLICY_DIR:-gs://openpi-assets/checkpoints/pi05_libero}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
