@@ -27,6 +27,7 @@ fi
 export PYTHONPATH=\
 /app/third_party/openpi/src:\
 /app/third_party/openpi/third_party/libero:\
+/app/third_party/openpi/packages/openpi-client/src:\
 ${PYTHONPATH:-}
 
 echo "[entrypoint] PYTHONPATH=${PYTHONPATH}"

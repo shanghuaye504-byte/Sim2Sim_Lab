@@ -32,7 +32,7 @@ echo "  Video output  : ${VIDEO_OUT}"
 echo "══════════════════════════════════════════════════"
 
 # ── 1. 启动 policy server（与原脚本完全相同）────────────────────────────────
-PYTHONPATH=/app/third_party/openpi/src:/app/src \
+PYTHONPATH=/app/third_party/openpi/src:/app/third_party/openpi/packages/openpi-client/src:/app/src \
 OPENPI_DATA_HOME="${OPENPI_DATA_HOME:-/app/.cache/openpi}" \
     /.venv/bin/python \
         /app/third_party/openpi/scripts/serve_policy.py \
