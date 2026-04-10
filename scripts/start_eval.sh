@@ -8,7 +8,7 @@ SERVER_PORT="${SERVER_PORT:-8000}"
 TASK_SUITE="${TASK_SUITE:-libero_spatial}"
 NUM_TRIALS="${NUM_TRIALS:-50}"
 POLICY_CONFIG="${POLICY_CONFIG:-pi05_libero}"
-POLICY_DIR="${POLICY_DIR:-gs://openpi-assets/checkpoints/pi05_libero}"
+POLICY_DIR="${POLICY_DIR:-/app/data/base_checkpoints/pi05_libero}"
 VIDEO_OUT="${VIDEO_OUT:-/app/data/libero/videos}"
 MUJOCO_GL="${MUJOCO_GL:-egl}"
 SERVER_START_TIMEOUT="${SERVER_START_TIMEOUT:-600}"
@@ -28,7 +28,14 @@ if [ -n "${DOMAIN_CONFIG_FILE}" ]; then
 else
     DOMAIN_NAME="source"
 fi
-VIDEO_OUT="${VIDEO_OUT}/${TASK_SUITE}/${DOMAIN_NAME}"
+
+MODEL_NAME="$(basename "${POLICY_DIR}")"
+# 拼接日志输出根目录
+LOG_DIR="/app/data/libero/logs/${MODEL_NAME}/${TASK_SUITE}/${DOMAIN_NAME}"
+mkdir -p "${LOG_DIR}" # 提前创建好文件夹
+
+
+VIDEO_OUT="${VIDEO_OUT}/${MODEL_NAME}/${TASK_SUITE}/${DOMAIN_NAME}"
 
 
 
@@ -41,6 +48,7 @@ echo "  Domain        : ${DOMAIN_NAME}"
 echo "  Config file   : ${DOMAIN_CONFIG_FILE:-（source domain，无偏移）}"
 echo "  Trials / task : ${NUM_TRIALS}"
 echo "  Video output  : ${VIDEO_OUT}"
+echo "  Log output    : ${LOG_DIR}"
 echo "══════════════════════════════════════════════════"
 
 
@@ -96,6 +104,7 @@ DOMAIN_CONFIG_FILE="${DOMAIN_CONFIG_FILE}" \
         --args.task-suite-name "${TASK_SUITE}" \
         --args.num-trials-per-task "${NUM_TRIALS}" \
         --args.video-out-path "${VIDEO_OUT}" \
+        --args.log-dir "${LOG_DIR}" \
     || LIBERO_EVAL_EXIT=$?
 
 

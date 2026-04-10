@@ -1,11 +1,7 @@
 # 本地构建与交互测试
-# 在项目根目录 Sim2Sim_Lab/ 下运行:
-#   docker compose -f docker/docker-compose.yml build
-#   docker compose -f docker/docker-compose.yml run --rm eval bash
-#   docker compose -f docker/docker-compose.yml run --rm eval bash /app/docker/entrypoint.sh
 services:
   eval:
-    image: your_dockerhub_name/myapp:v1.0   # ← 替换为你的 DockerHub 用户名
+    image: yycatmax/sim2sim-eval:v1.1
     build:
       context: ..                            # 项目根目录
       dockerfile: docker/Dockerfile
@@ -16,6 +12,9 @@ services:
       - $PWD:/app
       - ${OPENPI_DATA_HOME:-~/.cache/openpi}:/app/.cache/openpi
     environment:
+      # --- 新增这一行，告诉脚本在本地直接使用 /app，跳过 RunPod 的软链接逻辑 ---
+      - APP_OVERRIDE=/app
+      # ----------------------------------------------------------------------
       - OPENPI_DATA_HOME=/app/.cache/openpi
       - IS_DOCKER=true
       - LIBERO_CONFIG_PATH=/opt/libero_config

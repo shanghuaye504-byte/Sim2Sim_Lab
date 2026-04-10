@@ -1,0 +1,16 @@
+# configs for evaluation
+test_matrix:
+  checkpoints:
+    -name: "pi05_libero"
+    path:"
+
+  task_suites: [
+                 "libero_spatial",
+                 "libero_object",
+                 "libero_goal",
+                 "libero_10"
+  ]
+
+  domains:
+    - name: "source"
+      config_path:
