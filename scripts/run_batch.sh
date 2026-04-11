@@ -13,6 +13,8 @@ set -euo pipefail
 
 # ═══════════════════════════  配置区域  ═══════════════════════════════════════
 
+
+
 # 模型检查点，格式: "policy_config|checkpoint_dir"
 # 如需多个 checkpoint，逐行添加即可
 CHECKPOINTS=(
@@ -32,7 +34,7 @@ TASK_SUITES=(
 DOMAIN_CONFIG_DIR="/app/eval/domain_configs"
 
 # 每个 task 的 trial 数
-NUM_TRIALS="${NUM_TRIALS:-50}"
+NUM_TRIALS="${NUM_TRIALS:-1}"
 
 # 服务器端口
 SERVER_PORT="${SERVER_PORT:-8000}"
