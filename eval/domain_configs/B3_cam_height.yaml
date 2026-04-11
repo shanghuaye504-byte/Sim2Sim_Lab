@@ -1,20 +1,18 @@
 # B3_cam_height.yaml
-# agentview 沿 Z 轴抬高
-# 俯视角度增大，物体投影形状变化
 name: cam_height
 levels:
   weak:
     camera:
       shifts:
         - name: "agentview"
-          pos_offset: [0.0, 0.0, 0.04]
+          pos_offset: [0.0, 0.0, 0.07]
   medium:
     camera:
       shifts:
         - name: "agentview"
-          pos_offset: [0.0, 0.0, 0.07]
+          pos_offset: [0.0, 0.0, 0.14]
   strong:
     camera:
       shifts:
         - name: "agentview"
-          pos_offset: [0.0, 0.0, 0.12]
+          pos_offset: [0.0, 0.0, 0.22]

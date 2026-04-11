@@ -1,20 +1,18 @@
 # B2_cam_lateral.yaml
-# agentview 沿 Y 轴侧移
-# 改变观察角度，物体相对位置在图像中偏移
 name: cam_lateral
 levels:
   weak:
     camera:
       shifts:
         - name: "agentview"
-          pos_offset: [0.0, 0.04, 0.0]
+          pos_offset: [0.0, 0.08, 0.0]
   medium:
     camera:
       shifts:
         - name: "agentview"
-          pos_offset: [0.0, 0.08, 0.0]
+          pos_offset: [0.0, 0.15, 0.0]
   strong:
     camera:
       shifts:
         - name: "agentview"
-          pos_offset: [0.0, 0.13, 0.0]
+          pos_offset: [0.0, 0.25, 0.0]

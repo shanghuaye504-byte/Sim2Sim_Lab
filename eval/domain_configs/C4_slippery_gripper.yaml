@@ -1,27 +1,24 @@
 # C4_slippery_gripper.yaml
-# 降低夹爪摩擦 — 更难抓稳物体
-# 同时匹配 gripper 和 finger 关键词
-# ⚠️ strong 下抓取可能频繁失败，但不是 0% 成功
 name: slippery_gripper
 levels:
   weak:
     friction:
       geom_friction_shifts:
         - name_contains: "gripper"
-          friction_scale: 0.65
+          friction_scale: 0.45
         - name_contains: "finger"
-          friction_scale: 0.65
+          friction_scale: 0.45
   medium:
     friction:
       geom_friction_shifts:
         - name_contains: "gripper"
-          friction_scale: 0.40
+          friction_scale: 0.20
         - name_contains: "finger"
-          friction_scale: 0.40
+          friction_scale: 0.20
   strong:
     friction:
       geom_friction_shifts:
         - name_contains: "gripper"
-          friction_scale: 0.22
+          friction_scale: 0.08
         - name_contains: "finger"
-          friction_scale: 0.22
+          friction_scale: 0.08

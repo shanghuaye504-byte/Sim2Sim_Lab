@@ -1,16 +1,12 @@
 # C1_low_friction.yaml
-# 全局降低摩擦 — 所有接触面更滑
-# 影响：物体容易滑动、夹爪更难抓稳
-# ⚠️ strong 级别下任务仍可完成，但容错率大幅降低
-# friction_scale 作用于 [滑动摩擦, 扭转摩擦, 滚动摩擦] 三个分量
 name: low_friction_global
 levels:
   weak:
     friction:
-      global_scale: 0.70
+      global_scale: 0.50
   medium:
     friction:
-      global_scale: 0.50
+      global_scale: 0.25
   strong:
     friction:
-      global_scale: 0.30
+      global_scale: 0.12

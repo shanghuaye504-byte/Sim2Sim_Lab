@@ -1,22 +1,18 @@
 # A2_bright_lighting.yaml
-# 增强光照，模拟强灯 / 户外强光
-# weak: 略亮，白色区域开始饱和
-# medium: 明显过曝，物体表面高光扩大
-# strong: 严重过曝，大量区域 clip 到纯白
 name: bright_lighting
 levels:
   weak:
     lighting:
-      diffuse_scale: 1.4
-      specular_scale: 1.3
-      ambient_scale: 1.4
+      diffuse_scale: 1.7
+      specular_scale: 1.5
+      ambient_scale: 1.7
   medium:
-    lighting:
-      diffuse_scale: 1.8
-      specular_scale: 1.6
-      ambient_scale: 1.8
-  strong:
     lighting:
       diffuse_scale: 2.5
       specular_scale: 2.0
       ambient_scale: 2.5
+  strong:
+    lighting:
+      diffuse_scale: 4.0
+      specular_scale: 3.0
+      ambient_scale: 3.5

@@ -1,24 +1,21 @@
 # B8_cam_wrist.yaml
-# 手腕 eye-in-hand 相机同时偏移位置和角度
-# 模拟手眼标定误差
-# 注意：此相机随机器人运动，小偏移影响就很大
 name: cam_wrist
 levels:
   weak:
     camera:
       shifts:
         - name: "robot0_eye_in_hand"
-          pos_offset: [0.005, 0.005, 0.0]
-          euler_offset_deg: [2.0, 0.0, 0.0]
+          pos_offset: [0.010, 0.010, 0.0]
+          euler_offset_deg: [4.0, 0.0, 0.0]
   medium:
     camera:
       shifts:
         - name: "robot0_eye_in_hand"
-          pos_offset: [0.010, 0.008, 0.0]
-          euler_offset_deg: [5.0, 2.0, 0.0]
+          pos_offset: [0.020, 0.015, 0.005]
+          euler_offset_deg: [8.0, 3.0, 0.0]
   strong:
     camera:
       shifts:
         - name: "robot0_eye_in_hand"
-          pos_offset: [0.020, 0.015, 0.005]
-          euler_offset_deg: [8.0, 3.0, 2.0]
+          pos_offset: [0.035, 0.025, 0.010]
+          euler_offset_deg: [15.0, 5.0, 3.0]

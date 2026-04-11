@@ -1,17 +1,12 @@
 # A3_warm_lighting.yaml
-# 增加红/绿通道减少蓝通道，模拟白炽灯/黄昏
-# color_shift 加到 light_diffuse 上: [R, G, B]
-# weak: 轻微偏黄，对比 source 可感知
-# medium: 明显橙黄色调
-# strong: 强烈暖橘色，接近日落
 name: warm_lighting
 levels:
   weak:
     lighting:
-      color_shift: [0.06, 0.02, -0.04]
+      color_shift: [0.12, 0.04, -0.08]
   medium:
     lighting:
-      color_shift: [0.12, 0.04, -0.08]
+      color_shift: [0.25, 0.08, -0.18]
   strong:
     lighting:
-      color_shift: [0.20, 0.07, -0.15]
+      color_shift: [0.40, 0.15, -0.30]

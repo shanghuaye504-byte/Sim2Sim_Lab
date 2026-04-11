@@ -6,14 +6,14 @@ levels:
     camera:
       shifts:
         - name: "agentview"
-          fovy_offset: 6.0
+          fovy_offset: 5.0
   medium:
     camera:
       shifts:
         - name: "agentview"
-          fovy_offset: 12.0
+          fovy_offset: 15.0
   strong:
     camera:
       shifts:
         - name: "agentview"
-          fovy_offset: 20.0
+          fovy_offset: 22.0

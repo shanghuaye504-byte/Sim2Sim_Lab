@@ -1,21 +1,18 @@
 # C3_slippery_table.yaml
-# 仅降低桌面摩擦，夹爪摩擦不变
-# 影响：物体在桌面上容易被推滑，放置后可能滑移
-# 匹配 geom 名称中包含 "table" 的部分
 name: slippery_table
 levels:
   weak:
     friction:
       geom_friction_shifts:
         - name_contains: "table"
-          friction_scale: 0.50
+          friction_scale: 0.30
   medium:
     friction:
       geom_friction_shifts:
         - name_contains: "table"
-          friction_scale: 0.30
+          friction_scale: 0.12
   strong:
     friction:
       geom_friction_shifts:
         - name_contains: "table"
-          friction_scale: 0.12
+          friction_scale: 0.05
