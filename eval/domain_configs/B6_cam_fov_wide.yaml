@@ -1,0 +1,19 @@
+# B6_cam_fov_wide.yaml
+# 增大视场角 → 视野更大，物体更小，桶形畸变加重
+name: cam_fov_wide
+levels:
+  weak:
+    camera:
+      shifts:
+        - name: "agentview"
+          fovy_offset: 6.0
+  medium:
+    camera:
+      shifts:
+        - name: "agentview"
+          fovy_offset: 12.0
+  strong:
+    camera:
+      shifts:
+        - name: "agentview"
+          fovy_offset: 20.0

@@ -1,0 +1,22 @@
+# A1_dim_lighting.yaml
+# 降低所有光照分量，模拟暗室 / 傍晚环境
+# weak: 视觉上可感知的偏暗，物体轮廓清晰
+# medium: 明显偏暗，高频纹理细节开始丢失
+# strong: 接近暗室，只剩大致轮廓，但不至于全黑
+name: dim_lighting
+levels:
+  weak:
+    lighting:
+      diffuse_scale: 0.65
+      specular_scale: 0.65
+      ambient_scale: 0.70
+  medium:
+    lighting:
+      diffuse_scale: 0.35
+      specular_scale: 0.35
+      ambient_scale: 0.40
+  strong:
+    lighting:
+      diffuse_scale: 0.15
+      specular_scale: 0.15
+      ambient_scale: 0.25

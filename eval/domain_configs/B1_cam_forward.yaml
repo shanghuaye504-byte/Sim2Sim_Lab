@@ -1,0 +1,22 @@
+# B1_cam_forward.yaml
+# agentview 沿 X 轴前移（更靠近桌面）
+# weak: 微移，视野变化不明显但可测量
+# medium: 物体明显变大，边缘开始裁切
+# strong: 大幅前移，视野显著缩小
+name: cam_forward
+levels:
+  weak:
+    camera:
+      shifts:
+        - name: "agentview"
+          pos_offset: [0.03, 0.0, 0.0]
+  medium:
+    camera:
+      shifts:
+        - name: "agentview"
+          pos_offset: [0.06, 0.0, 0.0]
+  strong:
+    camera:
+      shifts:
+        - name: "agentview"
+          pos_offset: [0.10, 0.0, 0.0]

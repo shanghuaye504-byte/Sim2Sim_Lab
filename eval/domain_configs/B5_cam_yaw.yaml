@@ -1,0 +1,20 @@
+# B5_cam_yaw.yaml
+# agentview 绕 Z 轴旋转（水平旋转）
+# 观察方位角变化，左右物体关系在图像中偏移
+name: cam_yaw
+levels:
+  weak:
+    camera:
+      shifts:
+        - name: "agentview"
+          euler_offset_deg: [0.0, 0.0, 5.0]
+  medium:
+    camera:
+      shifts:
+        - name: "agentview"
+          euler_offset_deg: [0.0, 0.0, 10.0]
+  strong:
+    camera:
+      shifts:
+        - name: "agentview"
+          euler_offset_deg: [0.0, 0.0, 18.0]

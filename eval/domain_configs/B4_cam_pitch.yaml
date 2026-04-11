@@ -1,0 +1,22 @@
+# B4_cam_pitch.yaml
+# agentview 绕 Y 轴旋转（向下倾斜 = 正 pitch）
+# weak: 轻微俯角变化
+# medium: 明显更俯视
+# strong: 大幅俯角，接近鸟瞰但还能看到物体侧面
+name: cam_pitch
+levels:
+  weak:
+    camera:
+      shifts:
+        - name: "agentview"
+          euler_offset_deg: [0.0, 4.0, 0.0]
+  medium:
+    camera:
+      shifts:
+        - name: "agentview"
+          euler_offset_deg: [0.0, 8.0, 0.0]
+  strong:
+    camera:
+      shifts:
+        - name: "agentview"
+          euler_offset_deg: [0.0, 14.0, 0.0]
