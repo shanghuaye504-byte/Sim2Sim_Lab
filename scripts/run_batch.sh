@@ -34,7 +34,7 @@ TASK_SUITES=(
 DOMAIN_CONFIG_DIR="/app/eval/domain_configs"
 
 # 每个 task 的 trial 数
-NUM_TRIALS="${NUM_TRIALS:-1}"
+NUM_TRIALS="${NUM_TRIALS:-20}"
 
 # 服务器端口
 SERVER_PORT="${SERVER_PORT:-8000}"
