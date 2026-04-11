@@ -16,7 +16,7 @@ set -euo pipefail
 # 模型检查点，格式: "policy_config|checkpoint_dir"
 # 如需多个 checkpoint，逐行添加即可
 CHECKPOINTS=(
-    "pi05_libero|/app/data/base_checkpoints/pi05_libero"
+    "pi05_libero|gs://openpi-assets/checkpoints/pi05_libero"
     # "another_policy|/app/data/base_checkpoints/another_policy"
 )
 
