@@ -65,9 +65,30 @@ def _load_domain_config() -> dict:
     if not config_file:
         log.info("[domain_eval] DOMAIN_CONFIG_FILE 未设置，以 source domain 运行。")
         return {}
+
     with open(config_file, "r") as f:
         cfg = yaml.safe_load(f) or {}
     log.info(f"[domain_eval] 已加载 domain config: {config_file}")
+
+    # ── 新增：如果 YAML 是多级格式，按 DOMAIN_LEVEL 提取 ──────────────────
+    level = os.environ.get("DOMAIN_LEVEL", "").strip()
+    if "levels" in cfg and level:
+        levels = cfg["levels"]
+        if level not in levels:
+            raise ValueError(
+                f"DOMAIN_LEVEL='{level}' 在 {config_file} 中不存在。"
+                f"可用 levels: {list(levels.keys())}"
+            )
+        cfg = levels[level]
+        log.info(f"[domain_eval] 使用 level='{level}'")
+    elif "levels" in cfg and not level:
+        raise ValueError(
+            f"{config_file} 是多级格式但未设置 DOMAIN_LEVEL 环境变量。"
+            f"可用 levels: {list(cfg['levels'].keys())}"
+        )
+    # 如果没有 "levels" key，说明是扁平格式，原样使用（向后兼容）
+    # ─────────────────────────────────────────────────────────────────────────
+
     log.info(f"[domain_eval] 配置内容:\n{yaml.dump(cfg, default_flow_style=False)}")
     return cfg
 
