@@ -3,21 +3,21 @@
 Domain Shift Wrapper for LIBERO Evaluation
 ===========================================
 
-核心设计:
-  1. monkey-patch main._get_libero_env，注入 DomainShiftEnvWrapper
-  2. Wrapper 在每次 env.reset() 后自动重新应用 domain shift
-     （因为 robosuite hard_reset=True 每次 reset 都重建 sim，模型参数全部丢失）
-  3. set_init_state() 不重建 sim，只设置状态并重新渲染，
-     domain shift 在 reset 后持续生效直到下一次 reset
+Core Design:
+  1. Monkey-patch main._get_libero_env to inject DomainShiftEnvWrapper
+  2. The wrapper automatically re-applies domain shift after each env.reset()
+     (because robosuite hard_reset=True rebuilds sim on every reset, losing all model parameters)
+  3. set_init_state() does not rebuild sim; it only sets state and re-renders.
+     Domain shift remains effective after reset until the next reset.
 
-支持的 Domain Shift 类型:
+Supported Domain Shift Types:
   A. Lighting  — intensity, direction, warm/cool color, shadow, active
   B. Camera    — position offset, euler rotation, fovy
   C. Friction  — global, per-geom keyword
   D. Material  — specular, shininess, reflectance (global + per-material keyword)
-  E. Geom RGBA — per-geom keyword (保留原有功能)
+  E. Geom RGBA — per-geom keyword (preserving existing functionality)
 
-使用方式:
+Usage:
     DOMAIN_CONFIG_FILE=/path/to/config.yaml \\
     python /app/eval/domain_eval.py \\
         --args.task-suite-name libero_spatial \\
@@ -37,7 +37,7 @@ log = logging.getLogger("domain_eval")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Step 1: 把 main.py 所在目录加入 sys.path，导入 libero_main
+# Step 1: Add main.py's directory to sys.path and import libero_main
 # ═══════════════════════════════════════════════════════════════════════════════
 LIBERO_MAIN_DIR = os.environ.get(
     "LIBERO_MAIN_DIR",
@@ -49,8 +49,8 @@ import main as libero_main  # noqa: E402
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Step 2: 扩展 Args，新增 log_dir 字段（bash 脚本会传 --args.log-dir）
-#         原始 main.py 的 Args 没有此字段，不扩展的话 tyro 会报错
+# Step 2: Extend Args with a log_dir field (bash script passes --args.log-dir)
+#         The original main.py Args lacks this field; without extending, tyro would error
 # ═══════════════════════════════════════════════════════════════════════════════
 @dataclasses.dataclass
 class DomainEvalArgs(libero_main.Args):
@@ -58,38 +58,38 @@ class DomainEvalArgs(libero_main.Args):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Step 3: 读取 YAML domain config
+# Step 3: Load YAML domain config
 # ═══════════════════════════════════════════════════════════════════════════════
 def _load_domain_config() -> dict:
     config_file = os.environ.get("DOMAIN_CONFIG_FILE", "").strip()
     if not config_file:
-        log.info("[domain_eval] DOMAIN_CONFIG_FILE 未设置，以 source domain 运行。")
+        log.info("[domain_eval] DOMAIN_CONFIG_FILE not set, running with source domain.")
         return {}
 
     with open(config_file, "r") as f:
         cfg = yaml.safe_load(f) or {}
-    log.info(f"[domain_eval] 已加载 domain config: {config_file}")
+    log.info(f"[domain_eval] Loaded domain config: {config_file}")
 
-    # ── 新增：如果 YAML 是多级格式，按 DOMAIN_LEVEL 提取 ──────────────────
+    # ── Added: if YAML has multi-level format, extract by DOMAIN_LEVEL ────────
     level = os.environ.get("DOMAIN_LEVEL", "").strip()
     if "levels" in cfg and level:
         levels = cfg["levels"]
         if level not in levels:
             raise ValueError(
-                f"DOMAIN_LEVEL='{level}' 在 {config_file} 中不存在。"
-                f"可用 levels: {list(levels.keys())}"
+                f"DOMAIN_LEVEL='{level}' does not exist in {config_file}. "
+                f"Available levels: {list(levels.keys())}"
             )
         cfg = levels[level]
-        log.info(f"[domain_eval] 使用 level='{level}'")
+        log.info(f"[domain_eval] Using level='{level}'")
     elif "levels" in cfg and not level:
         raise ValueError(
-            f"{config_file} 是多级格式但未设置 DOMAIN_LEVEL 环境变量。"
-            f"可用 levels: {list(cfg['levels'].keys())}"
+            f"{config_file} has multi-level format but DOMAIN_LEVEL env variable is not set. "
+            f"Available levels: {list(cfg['levels'].keys())}"
         )
-    # 如果没有 "levels" key，说明是扁平格式，原样使用（向后兼容）
+    # If there is no "levels" key, it is a flat format — use as-is (backward compatible)
     # ─────────────────────────────────────────────────────────────────────────
 
-    log.info(f"[domain_eval] 配置内容:\n{yaml.dump(cfg, default_flow_style=False)}")
+    log.info(f"[domain_eval] Config contents:\n{yaml.dump(cfg, default_flow_style=False)}")
     return cfg
 
 
@@ -97,14 +97,14 @@ DOMAIN_CONFIG = _load_domain_config()
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Step 4: MuJoCo 辅助函数
+# Step 4: MuJoCo Helper Functions
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def _find_sim(env):
     """
-    在 LIBERO 多层包装中查找 robosuite 的 sim 对象。
-    OffScreenRenderEnv → ControlEnv.env → robosuite env.sim
-    ControlEnv 自身也有 @property sim 代理到 self.env.sim
+    Find the robosuite sim object through LIBERO's multi-layer wrappers.
+    OffScreenRenderEnv -> ControlEnv.env -> robosuite env.sim
+    ControlEnv itself has a @property sim that proxies to self.env.sim
     """
     for path in ("sim", "env.sim", "env.env.sim"):
         obj = env
@@ -115,20 +115,20 @@ def _find_sim(env):
                 return obj
         except AttributeError:
             continue
-    log.warning("[domain_eval] 未能找到 sim 对象！请检查 LIBERO/robosuite 版本。")
+    log.warning("[domain_eval] Failed to find sim object! Please check LIBERO/robosuite version.")
     return None
 
 
 def _get_raw_model(model):
     """
-    robosuite 的 MjSim.model 是对 mujoco.MjModel 的包装，
-    mujoco C API（如 mj_name2id）需要原始 model 对象。
+    robosuite's MjSim.model wraps mujoco.MjModel;
+    mujoco C APIs (e.g. mj_name2id) need the raw model object.
     """
     return getattr(model, "_model", model)
 
 
 def _id2name(model, type_enum, idx):
-    """根据 ID 获取 MuJoCo 对象名称（兼容 robosuite 包装）"""
+    """Get MuJoCo object name by ID (compatible with robosuite wrapper)"""
     import mujoco
     try:
         return mujoco.mj_id2name(_get_raw_model(model), type_enum, idx) or ""
@@ -137,10 +137,10 @@ def _id2name(model, type_enum, idx):
 
 
 def _name2id(model, type_enum, name):
-    """根据名称获取 MuJoCo 对象 ID（兼容 robosuite 包装）"""
+    """Get MuJoCo object ID by name (compatible with robosuite wrapper)"""
     import mujoco
     try:
-        # 优先用 robosuite 包装的方法（camera 用 camera_name2id 等）
+        # Prefer robosuite wrapper methods (e.g. camera_name2id for camera)
         type_str_map = {
             mujoco.mjtObj.mjOBJ_CAMERA: "camera",
             mujoco.mjtObj.mjOBJ_GEOM: "geom",
@@ -153,7 +153,7 @@ def _name2id(model, type_enum, name):
             return fn(name)
     except Exception:
         pass
-    # fallback: 直接调 mujoco C API
+    # Fallback: call mujoco C API directly
     try:
         result = mujoco.mj_name2id(_get_raw_model(model), type_enum, name)
         return result if result >= 0 else -1
@@ -163,8 +163,8 @@ def _name2id(model, type_enum, name):
 
 def _euler_deg_to_quat(roll_deg, pitch_deg, yaw_deg):
     """
-    欧拉角（度）→ MuJoCo 四元数 [w, x, y, z]
-    采用 ZYX 内旋约定：依次绕 X(roll) → Y(pitch) → Z(yaw)
+    Euler angles (degrees) -> MuJoCo quaternion [w, x, y, z]
+    Uses ZYX intrinsic rotation convention: rotate around X(roll) -> Y(pitch) -> Z(yaw)
     """
     r = np.radians(roll_deg) / 2.0
     p = np.radians(pitch_deg) / 2.0
@@ -184,7 +184,7 @@ def _euler_deg_to_quat(roll_deg, pitch_deg, yaw_deg):
 
 
 def _quat_mul(q1, q2):
-    """四元数乘法 q1 × q2，格式均为 [w, x, y, z]"""
+    """Quaternion multiplication q1 x q2, both in [w, x, y, z] format"""
     w1, x1, y1, z1 = q1
     w2, x2, y2, z2 = q2
     return np.array([
@@ -196,22 +196,22 @@ def _quat_mul(q1, q2):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Step 5: Domain Shift 核心应用函数
+# Step 5: Core Domain Shift Application Function
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def _apply_domain_shift(env, config: dict, verbose: bool = False) -> None:
     """
-    在 env.reset() 完成后修改 MuJoCo model 属性。
+    Modify MuJoCo model attributes after env.reset() completes.
 
-    参数:
-        env:     OffScreenRenderEnv 实例（ControlEnv 子类）
-        config:  从 YAML 加载的 domain shift 配置字典
-        verbose: 首次调用时为 True，打印详细的匹配信息
+    Args:
+        env:     OffScreenRenderEnv instance (ControlEnv subclass)
+        config:  Domain shift configuration dict loaded from YAML
+        verbose: True on first call to print detailed matching info
 
-    为什么需要在每次 reset 后重新调用？
-        robosuite 默认 hard_reset=True，每次 env.reset() 都会执行
-        _load_model() + _initialize_sim()，完全重建 MjSim 对象，
-        之前对 model 的所有修改全部丢失。
+    Why re-apply after every reset?
+        robosuite defaults to hard_reset=True; each env.reset() executes
+        _load_model() + _initialize_sim(), completely rebuilding the MjSim object,
+        so all previous model modifications are lost.
     """
     import mujoco
 
@@ -224,19 +224,19 @@ def _apply_domain_shift(env, config: dict, verbose: bool = False) -> None:
 
     model = sim.model
 
-    # ── 如果 verbose，打印场景概览 ────────────────────────────────────────────
+    # ── If verbose, print scene overview ──────────────────────────────────────
     if verbose:
         log.info(
-            f"[domain_eval] 场景概览: "
+            f"[domain_eval] Scene overview: "
             f"ngeom={model.ngeom}, nlight={model.nlight}, "
             f"ncam={model.ncam}, nmat={model.nmat}"
         )
-        # 打印所有相机名称，方便用户确认
+        # Print all camera names for user verification
         for i in range(model.ncam):
             cname = _id2name(model, mujoco.mjtObj.mjOBJ_CAMERA, i)
             log.info(f"  camera[{i}] = '{cname}', "
                      f"pos={model.cam_pos[i]}, fovy={model.cam_fovy[i]:.1f}")
-        # 打印所有光源名称
+        # Print all light source names
         for i in range(model.nlight):
             lname = _id2name(model, mujoco.mjtObj.mjOBJ_LIGHT, i)
             log.info(f"  light[{i}] = '{lname}', "
@@ -244,30 +244,30 @@ def _apply_domain_shift(env, config: dict, verbose: bool = False) -> None:
                      f"dir={model.light_dir[i]}")
 
     # ══════════════════════════════════════════════════════════════════════════
-    # A. 光照调整 (Lighting)
+    # A. Lighting Adjustment
     # ══════════════════════════════════════════════════════════════════════════
     lighting = config.get("lighting", {})
     if lighting and model.nlight > 0:
         if verbose:
-            log.info(f"[domain_eval][A] 应用光照调整（{model.nlight} 个光源）: {lighting}")
+            log.info(f"[domain_eval][A] Applying lighting adjustment ({model.nlight} light sources): {lighting}")
 
-        # A1. 漫反射强度缩放（控制整体明暗）
+        # A1. Diffuse intensity scale (controls overall brightness)
         if "diffuse_scale" in lighting:
             s = float(lighting["diffuse_scale"])
             model.light_diffuse[:] = np.clip(model.light_diffuse * s, 0.0, 1.0)
 
-        # A2. 镜面反射强度缩放（控制高光强弱）
+        # A2. Specular intensity scale (controls highlight strength)
         if "specular_scale" in lighting:
             s = float(lighting["specular_scale"])
             model.light_specular[:] = np.clip(model.light_specular * s, 0.0, 1.0)
 
-        # A3. 环境光强度缩放（控制阴影区域的亮度下限）
+        # A3. Ambient intensity scale (controls minimum brightness in shadow areas)
         if "ambient_scale" in lighting:
             s = float(lighting["ambient_scale"])
             model.light_ambient[:] = np.clip(model.light_ambient * s, 0.0, 1.0)
 
-        # A4. 光照方向偏移（改变光线入射角度）
-        #     偏移后重新归一化为单位向量
+        # A4. Light direction offset (changes light incidence angle)
+        #     Re-normalize to unit vector after offset
         if "direction_offset" in lighting:
             offset = np.array(lighting["direction_offset"], dtype=np.float64)
             for i in range(model.nlight):
@@ -276,65 +276,65 @@ def _apply_domain_shift(env, config: dict, verbose: bool = False) -> None:
                 if norm > 1e-8:
                     model.light_dir[i] = d / norm
 
-        # A5. 光源位置偏移
+        # A5. Light position offset
         if "position_offset" in lighting:
             offset = np.array(lighting["position_offset"], dtype=np.float64)
             model.light_pos[:] = model.light_pos + offset
 
-        # A6. 色温偏移：正 R / 负 B = 暖色；负 R / 正 B = 冷色
-        #     加到 diffuse 上，影响直射光颜色
+        # A6. Color temperature shift: positive R / negative B = warm; negative R / positive B = cool
+        #     Added to diffuse, affecting direct light color
         if "color_shift" in lighting:
             shift = np.array(lighting["color_shift"], dtype=np.float64)
             model.light_diffuse[:] = np.clip(model.light_diffuse + shift, 0.0, 1.0)
 
-        # A7. 阴影开关（0 = 不投射阴影，1 = 投射阴影）
+        # A7. Shadow toggle (0 = no shadow casting, 1 = shadow casting)
         if "castshadow" in lighting:
             model.light_castshadow[:] = int(lighting["castshadow"])
 
-        # A8. 光源激活开关（0 = 关闭，1 = 开启）
-        #     注意：关闭所有光源会导致场景全黑
+        # A8. Light activation toggle (0 = off, 1 = on)
+        #     Note: disabling all lights will result in a completely dark scene
         if "active" in lighting:
             model.light_active[:] = int(lighting["active"])
 
     # ══════════════════════════════════════════════════════════════════════════
-    # B. 相机调整 (Camera)
+    # B. Camera Adjustment
     # ══════════════════════════════════════════════════════════════════════════
     camera = config.get("camera", {})
     cam_shifts = camera.get("shifts", [])
     if cam_shifts and model.ncam > 0:
         if verbose:
-            log.info(f"[domain_eval][B] 应用相机调整（{len(cam_shifts)} 项配置）")
+            log.info(f"[domain_eval][B] Applying camera adjustment ({len(cam_shifts)} shift entries)")
 
         for shift in cam_shifts:
             cam_name = shift.get("name", "")
             cam_id = _name2id(model, mujoco.mjtObj.mjOBJ_CAMERA, cam_name)
             if cam_id < 0:
-                log.warning(f"[domain_eval][B] 未找到相机 '{cam_name}'，跳过。"
-                            f"可用相机: {[_id2name(model, mujoco.mjtObj.mjOBJ_CAMERA, i) for i in range(model.ncam)]}")
+                log.warning(f"[domain_eval][B] Camera '{cam_name}' not found, skipping. "
+                            f"Available cameras: {[_id2name(model, mujoco.mjtObj.mjOBJ_CAMERA, i) for i in range(model.ncam)]}")
                 continue
 
-            # B1. 位置偏移 [dx, dy, dz]（米）
-            #     agentview 等固定相机：世界坐标偏移
-            #     eye_in_hand 等附着相机：相对父体偏移
+            # B1. Position offset [dx, dy, dz] (meters)
+            #     agentview and other fixed cameras: world coordinate offset
+            #     eye_in_hand and other attached cameras: offset relative to parent body
             if "pos_offset" in shift:
                 offset = np.array(shift["pos_offset"], dtype=np.float64)
                 model.cam_pos[cam_id] += offset
                 if verbose:
                     log.info(f"  cam '{cam_name}': pos += {offset} → {model.cam_pos[cam_id]}")
 
-            # B2. 欧拉角偏移 [roll, pitch, yaw]（度）
-            #     将偏移四元数左乘到原始四元数上
+            # B2. Euler angle offset [roll, pitch, yaw] (degrees)
+            #     Left-multiply the offset quaternion onto the original quaternion
             if "euler_offset_deg" in shift:
                 euler = shift["euler_offset_deg"]
                 dq = _euler_deg_to_quat(euler[0], euler[1], euler[2])
                 orig_q = model.cam_quat[cam_id].copy()
                 new_q = _quat_mul(dq, orig_q)
-                new_q /= np.linalg.norm(new_q)  # 保证单位四元数
+                new_q /= np.linalg.norm(new_q)  # Ensure unit quaternion
                 model.cam_quat[cam_id] = new_q
                 if verbose:
                     log.info(f"  cam '{cam_name}': euler offset {euler}° applied")
 
-            # B3. 视场角偏移（度），裁剪到 [10, 160]
+            # B3. Field of view offset (degrees), clipped to [10, 160]
             if "fovy_offset" in shift:
                 fov_offset = float(shift["fovy_offset"])
                 old_fov = float(model.cam_fovy[cam_id])
@@ -343,15 +343,15 @@ def _apply_domain_shift(env, config: dict, verbose: bool = False) -> None:
                     log.info(f"  cam '{cam_name}': fovy {old_fov:.1f} → {float(model.cam_fovy[cam_id]):.1f}")
 
     # ══════════════════════════════════════════════════════════════════════════
-    # C. 摩擦力调整 (Friction)
-    #    geom_friction 是 (ngeom, 3) 数组: [滑动摩擦, 扭转摩擦, 滚动摩擦]
+    # C. Friction Adjustment
+    #    geom_friction is an (ngeom, 3) array: [sliding, torsional, rolling]
     # ══════════════════════════════════════════════════════════════════════════
     friction = config.get("friction", {})
     if friction and model.ngeom > 0:
         if verbose:
-            log.info(f"[domain_eval][C] 应用摩擦力调整（{model.ngeom} 个 geom）")
+            log.info(f"[domain_eval][C] Applying friction adjustment ({model.ngeom} geoms)")
 
-        # C1. 全局摩擦缩放（标量 → 三个分量统一缩放；列表 → 分别缩放）
+        # C1. Global friction scale (scalar -> uniform scaling for all 3 components; list -> per-component scaling)
         if "global_scale" in friction:
             gs = friction["global_scale"]
             if isinstance(gs, (int, float)):
@@ -359,9 +359,9 @@ def _apply_domain_shift(env, config: dict, verbose: bool = False) -> None:
             gs = np.array(gs, dtype=np.float64)
             model.geom_friction[:] = np.maximum(model.geom_friction * gs, 0.0)
             if verbose:
-                log.info(f"  全局摩擦缩放: ×{gs}")
+                log.info(f"  Global friction scale: x{gs}")
 
-        # C2. 按名称关键词缩放指定 geom 的摩擦
+        # C2. Scale friction for specific geoms by name keyword
         geom_friction_shifts = friction.get("geom_friction_shifts", [])
         for gfs in geom_friction_shifts:
             keyword = gfs.get("name_contains", "").lower()
@@ -381,38 +381,38 @@ def _apply_domain_shift(env, config: dict, verbose: bool = False) -> None:
                     )
                     matched += 1
             if verbose:
-                log.info(f"  摩擦关键词 '{keyword}': 匹配 {matched} 个 geom, scale={fs}")
+                log.info(f"  Friction keyword '{keyword}': matched {matched} geoms, scale={fs}")
 
     # ══════════════════════════════════════════════════════════════════════════
-    # D. 材质光学属性调整 (Material Optical)
+    # D. Material Optical Properties Adjustment
     # ══════════════════════════════════════════════════════════════════════════
     material_cfg = config.get("material", {})
     if material_cfg and model.nmat > 0:
         if verbose:
-            log.info(f"[domain_eval][D] 应用材质光学调整（{model.nmat} 个材质）")
+            log.info(f"[domain_eval][D] Applying material optical adjustment ({model.nmat} materials)")
 
-        # D1. 全局 specular 缩放
+        # D1. Global specular scale
         if "global_specular_scale" in material_cfg:
             s = float(material_cfg["global_specular_scale"])
             model.mat_specular[:] = np.clip(model.mat_specular * s, 0.0, 1.0)
             if verbose:
-                log.info(f"  全局 specular ×{s}")
+                log.info(f"  Global specular x{s}")
 
-        # D2. 全局 shininess 缩放
+        # D2. Global shininess scale
         if "global_shininess_scale" in material_cfg:
             s = float(material_cfg["global_shininess_scale"])
             model.mat_shininess[:] = np.clip(model.mat_shininess * s, 0.0, 1.0)
             if verbose:
-                log.info(f"  全局 shininess ×{s}")
+                log.info(f"  Global shininess x{s}")
 
-        # D3. 全局 reflectance 缩放
+        # D3. Global reflectance scale
         if "global_reflectance_scale" in material_cfg:
             s = float(material_cfg["global_reflectance_scale"])
             model.mat_reflectance[:] = np.clip(model.mat_reflectance * s, 0.0, 1.0)
             if verbose:
-                log.info(f"  全局 reflectance ×{s}")
+                log.info(f"  Global reflectance x{s}")
 
-        # D4. 按名称关键词设置指定材质的属性（绝对值，非缩放）
+        # D4. Set specific material properties by name keyword (absolute values, not scaling)
         material_shifts = material_cfg.get("material_shifts", [])
         for ms in material_shifts:
             keyword = ms.get("name_contains", "").lower()
@@ -432,15 +432,15 @@ def _apply_domain_shift(env, config: dict, verbose: bool = False) -> None:
                         model.mat_rgba[i] = np.array(ms["rgba"], dtype=np.float32)
                     matched += 1
             if verbose:
-                log.info(f"  材质关键词 '{keyword}': 匹配 {matched} 个材质")
+                log.info(f"  Material keyword '{keyword}': matched {matched} materials")
 
     # ══════════════════════════════════════════════════════════════════════════
-    # E. Geom RGBA 调整（保留原有功能，统一到新框架下）
+    # E. Geom RGBA Adjustment (preserving existing functionality, unified into new framework)
     # ══════════════════════════════════════════════════════════════════════════
     geom_shifts = config.get("geom_rgba_shifts", [])
     if geom_shifts and model.ngeom > 0:
         if verbose:
-            log.info(f"[domain_eval][E] 应用 geom RGBA 调整")
+            log.info(f"[domain_eval][E] Applying geom RGBA adjustment")
         for gs in geom_shifts:
             keyword = gs.get("name_contains", "").lower()
             rgba = gs.get("rgba", None)
@@ -459,55 +459,56 @@ def _apply_domain_shift(env, config: dict, verbose: bool = False) -> None:
                         )
                     matched += 1
             if verbose:
-                log.info(f"  geom_rgba 关键词 '{keyword}': 匹配 {matched} 个 geom")
+                log.info(f"  geom_rgba keyword '{keyword}': matched {matched} geoms")
 
-    # ── 调用 forward() 使物理参数改动（摩擦等）传播到派生量 ────────────────────
-    # 视觉参数（光照/相机/材质）在下次渲染时自动生效，
-    # 但 forward() 会更新接触相关的派生量，对摩擦力改动有帮助
+    # ── Call forward() to propagate physics parameter changes (e.g. friction) to derived quantities ──
+    # Visual parameters (lighting/camera/material) take effect automatically on the next render,
+    # but forward() updates contact-related derived quantities, which helps with friction changes
     sim.forward()
 
     if verbose:
-        log.info("[domain_eval] ✓ Domain shift 应用完成。")
+        log.info("[domain_eval] ✓ Domain shift applied successfully.")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Step 6: 环境包装器 — 解决 hard_reset 导致修改丢失的核心问题
+# Step 6: Environment Wrapper — Solves the core issue of hard_reset losing modifications
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class DomainShiftEnvWrapper:
     """
-    包装 OffScreenRenderEnv，在每次 reset() 后自动重新应用 domain shift。
+    Wraps OffScreenRenderEnv to automatically re-apply domain shift after each reset().
 
-    为什么需要这个包装器？
+    Why is this wrapper needed?
+    ───────────────────────────
+    robosuite defaults to hard_reset=True; each env.reset() will:
+      1. _load_model()      -> rebuild the model from XML
+      2. _initialize_sim()  -> create a brand new MjSim object
+    This means all previous modifications to model parameters (lighting, camera, friction, etc.)
+    are completely lost.
+
+    Since the evaluation loop calls reset() for each episode, we must re-apply after every reset.
+
+    Call order guarantee:
     ─────────────────────
-    robosuite 默认 hard_reset=True，每次 env.reset() 都会：
-      1. _load_model()      → 从 XML 重新构建模型
-      2. _initialize_sim()  → 创建全新的 MjSim 对象
-    这意味着之前对 model 参数（光照、相机、摩擦等）的任何修改全部丢失。
-
-    评估循环中每个 episode 都调用 reset()，所以必须在每次 reset 后重新应用。
-
-    调用顺序保证:
-    ─────────────
-    eval_libero 中的流程:
-      env.reset()                              ← 重建 sim，我们在此后注入 shift
-      obs = env.set_init_state(init_state)     ← 设置 qpos/qvel，调用 forward() + render
-                                                  此时 domain shift 已经生效 ✓
+    The flow in eval_libero:
+      env.reset()                              <- rebuilds sim; we inject shift right after
+      obs = env.set_init_state(init_state)     <- sets qpos/qvel, calls forward() + render
+                                                  domain shift is already in effect at this point ✓
       for step:
-        obs, r, d, i = env.step(action)        ← 物理步进 + 渲染，shift 持续生效 ✓
+        obs, r, d, i = env.step(action)        <- physics step + render, shift persists ✓
     """
 
     def __init__(self, env, config: dict):
-        # 使用 object.__setattr__ 避免触发 __getattr__
+        # Use object.__setattr__ to avoid triggering __getattr__
         object.__setattr__(self, "_env", env)
         object.__setattr__(self, "_config", config)
         object.__setattr__(self, "_reset_count", 0)
 
     def reset(self):
-        """调用原始 reset()，然后重新应用 domain shift。"""
+        """Call original reset(), then re-apply domain shift."""
         obs = self._env.reset()
 
-        # 首次 reset 时 verbose=True，打印场景详细信息帮助调试
+        # verbose=True on first reset to print detailed scene info for debugging
         verbose = (self._reset_count == 0)
         _apply_domain_shift(self._env, self._config, verbose=verbose)
         object.__setattr__(self, "_reset_count", self._reset_count + 1)
@@ -516,14 +517,14 @@ class DomainShiftEnvWrapper:
 
     def set_init_state(self, init_state):
         """
-        set_init_state 不重建 sim（只设置 qpos/qvel + forward + render），
-        domain shift 在上一次 reset 中已经应用，此处自动生效。
-        返回的 obs 已包含 domain shift 效果。
+        set_init_state does not rebuild sim (only sets qpos/qvel + forward + render),
+        so domain shift applied in the previous reset is still in effect here.
+        The returned obs already includes domain shift effects.
         """
         return self._env.set_init_state(init_state)
 
     def step(self, action):
-        """直接转发，domain shift 在本 episode 内持续生效。"""
+        """Directly forward; domain shift persists within this episode."""
         return self._env.step(action)
 
     def seed(self, s):
@@ -533,7 +534,7 @@ class DomainShiftEnvWrapper:
         return self._env.close()
 
     def __getattr__(self, name):
-        """未显式定义的属性/方法全部转发到底层 env。"""
+        """Forward all attributes/methods not explicitly defined to the underlying env."""
         return getattr(self._env, name)
 
 
@@ -546,31 +547,31 @@ _original_get_libero_env = libero_main._get_libero_env
 
 def _patched_get_libero_env(task, resolution, seed):
     """
-    调用原始函数创建 env，然后用 DomainShiftEnvWrapper 包装。
+    Call the original function to create env, then wrap with DomainShiftEnvWrapper.
 
-    注意：此时 env 还没有执行 reset()，domain shift 会在
-    eval_libero() 中第一次调用 env.reset() 时自动应用。
+    Note: env has not been reset() yet at this point; domain shift will be
+    automatically applied when eval_libero() first calls env.reset().
     """
     env, task_description = _original_get_libero_env(task, resolution, seed)
     if DOMAIN_CONFIG:
         env = DomainShiftEnvWrapper(env, DOMAIN_CONFIG)
-        log.info(f"[domain_eval] 环境已包装 DomainShiftEnvWrapper "
+        log.info(f"[domain_eval] Environment wrapped with DomainShiftEnvWrapper "
                  f"(task: {task_description})")
     return env, task_description
 
 
 libero_main._get_libero_env = _patched_get_libero_env
-log.info("[domain_eval] ✓ 已成功 patch _get_libero_env")
+log.info("[domain_eval] ✓ Successfully patched _get_libero_env")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Step 8: 入口
+# Step 8: Entry Point
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def _domain_eval_main(args: DomainEvalArgs) -> None:
     """
-    薄包装层：扩展 Args 以支持 log_dir 字段，然后委托给 eval_libero。
-    DomainEvalArgs 继承自 Args，所有原始字段完全兼容。
+    Thin wrapper: extends Args to support the log_dir field, then delegates to eval_libero.
+    DomainEvalArgs inherits from Args, so all original fields are fully compatible.
     """
     log.info(f"[domain_eval] log_dir = {args.log_dir}")
     log.info(f"[domain_eval] video_out_path = {args.video_out_path}")

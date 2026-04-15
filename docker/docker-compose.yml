@@ -1,9 +1,9 @@
-# 本地构建与交互测试
+# Local build and interactive testing
 services:
   eval:
     image: yycatmax/sim2sim-eval:v1.1
     build:
-      context: ..                            # 项目根目录
+      context: ..                            # project root directory
       dockerfile: docker/Dockerfile
     init: true
     tty: true
@@ -12,7 +12,7 @@ services:
       - $PWD:/app
       - ${OPENPI_DATA_HOME:-~/.cache/openpi}:/app/.cache/openpi
     environment:
-      # --- 新增这一行，告诉脚本在本地直接使用 /app，跳过 RunPod 的软链接逻辑 ---
+      # --- Added: tells the script to use /app directly on local, skipping RunPod symlink logic ---
       - APP_OVERRIDE=/app
       # ----------------------------------------------------------------------
       - OPENPI_DATA_HOME=/app/.cache/openpi
