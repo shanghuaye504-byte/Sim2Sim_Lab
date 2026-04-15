@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
 aggregate_results.py
-遍历 LOG_ROOT 下所有 eval_results.json，汇总为 CSV 表格。
+Traverse LOG_ROOT to find all eval_results.json files and aggregate them into a CSV table.
 
-目录约定:
+Directory convention:
     {LOG_ROOT}/{model}/{task_suite}/{domain}/eval_results.json
 
-用法:
+Usage:
     python aggregate_results.py --log-root /app/data/libero/logs \
                                 --output /app/data/libero/results_table.csv
 """
@@ -24,16 +24,16 @@ def main():
 
     log_root = pathlib.Path(args.log_root)
     if not log_root.exists():
-        print(f"[aggregate] 日志根目录不存在: {log_root}")
+        print(f"[aggregate] Log root directory does not exist: {log_root}")
         return
 
-    # 收集所有结果
+    # Collect all results
     rows = []
     for json_file in sorted(log_root.rglob("eval_results.json")):
-        # 路径: {log_root}/{model}/{task_suite}/{domain}/eval_results.json
+        # Path: {log_root}/{model}/{task_suite}/{domain}/eval_results.json
         parts = json_file.relative_to(log_root).parts
         if len(parts) != 4:
-            print(f"[aggregate] 跳过路径层级不符的文件: {json_file}")
+            print(f"[aggregate] Skipping file with incorrect path depth: {json_file}")
             continue
 
         model, task_suite, domain, _ = parts
@@ -54,15 +54,15 @@ def main():
             "episodes": total_ep,
         })
 
-        # 每个 task 的细粒度结果
+        # Fine-grained results for each task
         for task_desc, task_data in data.get("tasks", {}).items():
             rows_detail_key = f"{model}/{task_suite}/{domain}/{task_desc}"
 
     if not rows:
-        print("[aggregate] 未找到任何 eval_results.json")
+        print("[aggregate] No eval_results.json files found")
         return
 
-    # 写 CSV
+    # Write CSV
     output_path = pathlib.Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -73,11 +73,11 @@ def main():
         for row in rows:
             writer.writerow(row)
 
-    print(f"[aggregate] CSV 已保存: {output_path}")
-    print(f"[aggregate] 共 {len(rows)} 条记录")
+    print(f"[aggregate] CSV saved: {output_path}")
+    print(f"[aggregate] Total {len(rows)} records")
     print()
 
-    # 终端打印可读表格
+    # Print readable table to terminal
     print(f"{'Model':<20} {'Task Suite':<18} {'Domain':<25} {'SR':>8} {'Succ':>6} {'Ep':>6}")
     print("─" * 90)
     for row in rows:

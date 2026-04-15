@@ -3,27 +3,27 @@ set -euo pipefail
 
 APP_OVERRIDE="${APP_OVERRIDE:-/workspace/Sim2Sim_Lab}"
 
-# ── Step 1: 软链接覆盖 /app ───────────────────────────────────────────────────
+# ── Step 1: Symlink override /app ─────────────────────────────────────────────
 if [ "${APP_OVERRIDE}" != "/app" ]; then
     if [ -d "${APP_OVERRIDE}" ] || [ -L "${APP_OVERRIDE}" ]; then
-        # 目标存在才做重定向，避免把不存在的路径软链接进来导致后续全部 404
-        echo "[entrypoint] 重定向 /app -> ${APP_OVERRIDE}"
+        # Only redirect if target exists, to avoid symlinking a non-existent path which causes 404 errors
+        echo "[entrypoint] Redirecting /app -> ${APP_OVERRIDE}"
 
-        # 如果 /app 已经是指向正确目标的软链接，跳过（幂等）
+        # If /app is already a symlink pointing to the correct target, skip (idempotent)
         if [ "$(readlink /app 2>/dev/null)" = "${APP_OVERRIDE}" ]; then
-            echo "[entrypoint] /app 已正确指向 ${APP_OVERRIDE}，跳过。"
+            echo "[entrypoint] /app already points to ${APP_OVERRIDE}, skipping."
         else
             rm -rf /app
             ln -s "${APP_OVERRIDE}" /app
-            echo "[entrypoint] 软链接创建成功: /app -> $(readlink /app)"
+            echo "[entrypoint] Symlink created: /app -> $(readlink /app)"
         fi
     else
-        echo "[entrypoint] 警告：${APP_OVERRIDE} 不存在，跳过重定向。"
-        echo "[entrypoint] 请确认 RunPod Network Volume 已正确挂载到 /workspace。"
+        echo "[entrypoint] Warning: ${APP_OVERRIDE} does not exist, skipping redirect."
+        echo "[entrypoint] Please ensure RunPod Network Volume is correctly mounted at /workspace."
     fi
 fi
 
-# ── Step 2: 显式设置 PYTHONPATH ──────────────────────────────────────────────
+# ── Step 2: Explicitly set PYTHONPATH ─────────────────────────────────────────
 export PYTHONPATH=\
 /app/third_party/openpi/src:\
 /app/third_party/openpi/third_party/libero:\
@@ -56,11 +56,11 @@ mkdir -p "${TB_LOGDIR}"
     > /tmp/tensorboard.log 2>&1 &
 echo "✓ TensorBoard started on :6006  (log: /tmp/tensorboard.log)"
 
-# ── 5. WandB 无需启动服务 ────────────────────────────────────────────────────
-# 只需在 RunPod 模板里设置环境变量 WANDB_API_KEY 即可，wandb 库会自动读取
+# ── 5. WandB does not require a separate service ─────────────────────────────
+# Just set the WANDB_API_KEY env variable in the RunPod template; the wandb library reads it automatically
 
 echo "================================================"
-echo " 所有服务已启动，进入 CMD..."
+echo " All services started, entering CMD..."
 echo "================================================"
 
 exec "$@"

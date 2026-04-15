@@ -16,13 +16,13 @@ SERVER_START_TIMEOUT="${SERVER_START_TIMEOUT:-600}"
 
 
 
-# ── 新增：domain config 路径，默认为空（source domain）──────────────────────
+# ── Added: domain config path, defaults to empty (source domain) ─────────────
 DOMAIN_CONFIG_FILE="${DOMAIN_CONFIG_FILE:-}"
 
 
 
 
-# ── domain 名称仅用于日志和视频目录区分 ──────────────────────────────────────
+# ── Domain name is only used to distinguish log and video directories ─────────
 if [ -n "${DOMAIN_CONFIG_FILE}" ]; then
     DOMAIN_NAME="$(basename "${DOMAIN_CONFIG_FILE}" .yaml)"
 else
@@ -30,9 +30,9 @@ else
 fi
 
 MODEL_NAME="$(basename "${POLICY_DIR}")"
-# 拼接日志输出根目录
+# Compose log output root directory
 LOG_DIR="/app/data/libero/logs/${MODEL_NAME}/${TASK_SUITE}/${DOMAIN_NAME}"
-mkdir -p "${LOG_DIR}" # 提前创建好文件夹
+mkdir -p "${LOG_DIR}" # Create directory in advance
 
 
 VIDEO_OUT="${VIDEO_OUT}/${MODEL_NAME}/${TASK_SUITE}/${DOMAIN_NAME}"
@@ -45,7 +45,7 @@ echo "  Sim2Sim_Lab — Domain Shift Evaluation"
 echo "══════════════════════════════════════════════════"
 echo "  Task suite    : ${TASK_SUITE}"
 echo "  Domain        : ${DOMAIN_NAME}"
-echo "  Config file   : ${DOMAIN_CONFIG_FILE:-（source domain，无偏移）}"
+echo "  Config file   : ${DOMAIN_CONFIG_FILE:-(source domain, no shift)}"
 echo "  Trials / task : ${NUM_TRIALS}"
 echo "  Video output  : ${VIDEO_OUT}"
 echo "  Log output    : ${LOG_DIR}"
@@ -54,7 +54,7 @@ echo "════════════════════════�
 
 
 
-# ── 1. 启动 policy server ────────────────────────────────────────────────────
+# ── 1. Start policy server ───────────────────────────────────────────────────
 PYTHONPATH=/app/third_party/openpi/src:/app/third_party/openpi/packages/openpi-client/src:/app/src \
 OPENPI_DATA_HOME="${OPENPI_DATA_HOME:-/app/.cache/openpi}" \
     /.venv/bin/python \
@@ -71,20 +71,20 @@ SERVER_PID=$!
 ELAPSED=0
 until curl -sf "http://127.0.0.1:${SERVER_PORT}/healthz" > /dev/null 2>&1; do
     if ! kill -0 "${SERVER_PID}" 2>/dev/null; then
-        echo "[server] Policy server 意外退出。"; exit 1
+        echo "[server] Policy server exited unexpectedly."; exit 1
     fi
     [ "${ELAPSED}" -ge "${SERVER_START_TIMEOUT}" ] && {
-        echo "[server] 超时。"; kill "${SERVER_PID}" 2>/dev/null; exit 1
+        echo "[server] Timeout."; kill "${SERVER_PID}" 2>/dev/null; exit 1
     }
     sleep 5; ELAPSED=$((ELAPSED + 5))
-    echo "[server] 已等待 ${ELAPSED}s ..."
+    echo "[server] Waited ${ELAPSED}s ..."
 done
-echo "[server] 服务器就绪！"
+echo "[server] Server is ready!"
 
 
 
 
-# ── 2. 启动 LIBERO 评估 ──────────────────────────────────────────────────────
+# ── 2. Start LIBERO evaluation ───────────────────────────────────────────────
 mkdir -p "${VIDEO_OUT}"
 LIBERO_EVAL_EXIT=0
 
@@ -110,7 +110,7 @@ DOMAIN_CONFIG_FILE="${DOMAIN_CONFIG_FILE}" \
 
 
 
-# ── 3. 收尾 ──────────────────────────────────────────────────────────────────
+# ── 3. Cleanup ────────────────────────────────────────────────────────────────
 kill "${SERVER_PID}" 2>/dev/null || true
 wait "${SERVER_PID}" 2>/dev/null || true
 
@@ -119,7 +119,7 @@ wait "${SERVER_PID}" 2>/dev/null || true
 
 echo "══════════════════════════════════════════════════"
 [ "${LIBERO_EVAL_EXIT}" -eq 0 ] \
-    && echo "  完成 ✓  domain=${DOMAIN_NAME}  videos=${VIDEO_OUT}" \
-    || echo "  失败 ✗  exit code=${LIBERO_EVAL_EXIT}"
+    && echo "  Done ✓  domain=${DOMAIN_NAME}  videos=${VIDEO_OUT}" \
+    || echo "  Failed ✗  exit code=${LIBERO_EVAL_EXIT}"
 echo "══════════════════════════════════════════════════"
 exit "${LIBERO_EVAL_EXIT}"

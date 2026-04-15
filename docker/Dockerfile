@@ -1,8 +1,8 @@
 # =============================================================================
-# Sim2Sim_Lab — 合并镜像
-# 包含: openpi 推理服务器 (Python 3.11) + LIBERO benchmark 客户端 (Python 3.8)
-# Build context: Sim2Sim_Lab/  (项目根目录)
-# 构建前必须确保 git submodule 已完整初始化:
+# Sim2Sim_Lab — Unified Image
+# Contains: openpi inference server (Python 3.11) + LIBERO benchmark client (Python 3.8)
+# Build context: Sim2Sim_Lab/  (project root directory)
+# Ensure git submodule is fully initialized before building:
 #   git submodule update --init --recursive
 # =============================================================================
 FROM nvidia/cuda:12.2.2-cudnn8-runtime-ubuntu22.04@sha256:2d913b09e6be8387e1a10976933642c73c840c0b735f0bf3c28d97fc9bc422e0
@@ -13,9 +13,9 @@ WORKDIR /app
 
 
 
-# ── 系统依赖 ──────────────────────────────────────────────────────────────────
+# ── System dependencies ──────────────────────────────────────────────────────
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        # 通用构建工具
+        # General build tools
         git \
         git-lfs \
         build-essential \
@@ -24,9 +24,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         cmake \
         g++ \
         curl \
-        # SSH 服务端
+        # SSH server
         openssh-server \
-        # MuJoCo / robosuite 渲染所需的 OpenGL / EGL 库
+        # OpenGL / EGL libraries required by MuJoCo / robosuite rendering
         libosmesa6-dev \
         libgl1-mesa-glx \
         libegl1 \
@@ -39,8 +39,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libxext6 \
     && rm -rf /var/lib/apt/lists/*
 
-# ── SSH 基础配置 ─────────────────────────────────────────────────────────────
-# 允许 root 通过密钥登录（RunPod 注入公钥，不需要密码）
+# ── SSH basic configuration ──────────────────────────────────────────────────
+# Allow root login via key (RunPod injects public key; no password needed)
 RUN mkdir /var/run/sshd && \
     sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config && \
     sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config && \
@@ -49,7 +49,7 @@ RUN mkdir /var/run/sshd && \
 ENV UV_LINK_MODE=copy
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 环境 A — openpi 推理服务器  (Python 3.11)
+# Environment A — openpi inference server  (Python 3.11)
 # ══════════════════════════════════════════════════════════════════════════════
 ENV UV_PROJECT_ENVIRONMENT=/.venv
 
@@ -83,7 +83,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv pip install --python /.venv pytest
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 环境 B — LIBERO benchmark 客户端  (Python 3.8)
+# Environment B — LIBERO benchmark client  (Python 3.8)
 # ══════════════════════════════════════════════════════════════════════════════
 ENV LIBERO_VENV=/.venv_libero
 
@@ -107,8 +107,8 @@ RUN --mount=type=cache,target=/root/.cache/uv \
         --extra-index-url https://download.pytorch.org/whl/cu113 \
         --index-strategy=unsafe-best-match
 
-# ── 在 3.8 环境里也装 ipykernel，然后注册到 Jupyter ──────────────────────────
-# 这样你在 Jupyter 界面里可以自由切换 3.11 和 3.8 两个 kernel
+# ── Install ipykernel in the 3.8 env and register with Jupyter ───────────────
+# This allows switching between the 3.11 and 3.8 kernels in the Jupyter UI
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv pip install --python $LIBERO_VENV ipykernel && \
     $LIBERO_VENV/bin/python -m ipykernel install \
@@ -116,12 +116,12 @@ RUN --mount=type=cache,target=/root/.cache/uv \
         --display-name "Python 3.8 (LIBERO)" \
         --prefix /.venv
 
-# ── MuJoCo headless 渲染 (EGL) ────────────────────────────────────────────────
+# ── MuJoCo headless rendering (EGL) ──────────────────────────────────────────
 RUN mkdir -p /usr/share/glvnd/egl_vendor.d && \
     printf '{"file_format_version":"1.0.0","ICD":{"library_path":"libEGL_nvidia.so.0"}}\n' \
         > /usr/share/glvnd/egl_vendor.d/10_nvidia.json
 
-# ── LIBERO 配置文件 ───────────────────────────────────────────────────────────
+# ── LIBERO configuration files ───────────────────────────────────────────────
 ENV LIBERO_CONFIG_PATH=/opt/libero_config
 RUN mkdir -p /opt/libero_config && cat > /opt/libero_config/config.yaml << 'YAML_EOF'
 benchmark_root: /app/third_party/openpi/third_party/libero/libero/libero
@@ -143,10 +143,10 @@ ENTRYPOINT ["/entrypoint.sh"]
 CMD ["/bin/bash"]
 
 ## =============================================================================
-## Sim2Sim_Lab — 合并镜像
-## 包含: openpi 推理服务器 (Python 3.11) + LIBERO benchmark 客户端 (Python 3.8)
-## Build context: Sim2Sim_Lab/  (项目根目录)
-## 构建前必须确保 git submodule 已完整初始化:
+## Sim2Sim_Lab — Unified Image
+## Contains: openpi inference server (Python 3.11) + LIBERO benchmark client (Python 3.8)
+## Build context: Sim2Sim_Lab/  (project root directory)
+## Ensure git submodule is fully initialized before building:
 ##   git submodule update --init --recursive
 ## =============================================================================
 #FROM nvidia/cuda:12.2.2-cudnn8-runtime-ubuntu22.04@sha256:2d913b09e6be8387e1a10976933642c73c840c0b735f0bf3c28d97fc9bc422e0
@@ -157,9 +157,9 @@ CMD ["/bin/bash"]
 #
 #
 #
-## ── 系统依赖 ──────────────────────────────────────────────────────────────────
+## ── System dependencies ──────────────────────────────────────────────────────
 #RUN apt-get update && apt-get install -y --no-install-recommends \
-#        # 通用构建工具
+#        # General build tools
 #        git \
 #        git-lfs \
 #        build-essential \
@@ -168,9 +168,9 @@ CMD ["/bin/bash"]
 #        cmake \
 #        g++ \
 #        curl \
-#        # SSH 服务端
+#        # SSH server
 #        openssh-server \
-#        # MuJoCo / robosuite 渲染所需的 OpenGL / EGL 库
+#        # OpenGL / EGL libraries required by MuJoCo / robosuite rendering
 #        libosmesa6-dev \
 #        libgl1-mesa-glx \
 #        libegl1 \
@@ -183,8 +183,8 @@ CMD ["/bin/bash"]
 #        libxext6 \
 #    && rm -rf /var/lib/apt/lists/*
 #
-## ── SSH 基础配置 ─────────────────────────────────────────────────────────────
-## 允许 root 通过密钥登录（RunPod 注入公钥，不需要密码）
+## ── SSH basic configuration ──────────────────────────────────────────────────
+## Allow root login via key (RunPod injects public key; no password needed)
 #RUN mkdir /var/run/sshd && \
 #    sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config && \
 #    sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config && \
@@ -193,7 +193,7 @@ CMD ["/bin/bash"]
 #ENV UV_LINK_MODE=copy
 #
 ## ══════════════════════════════════════════════════════════════════════════════
-## 环境 A — openpi 推理服务器  (Python 3.11)
+## Environment A — openpi inference server  (Python 3.11)
 ## ══════════════════════════════════════════════════════════════════════════════
 #ENV UV_PROJECT_ENVIRONMENT=/.venv
 #
@@ -227,11 +227,11 @@ CMD ["/bin/bash"]
 #    uv pip install --python /.venv pytest
 #
 ## ══════════════════════════════════════════════════════════════════════════════
-## 环境 B — LIBERO benchmark 客户端  (Python 3.8)
+## Environment B — LIBERO benchmark client  (Python 3.8)
 ## ══════════════════════════════════════════════════════════════════════════════
 #ENV LIBERO_VENV=/.venv_libero
 #
-## ↓↓↓ 改动：加 --seed，让 uv 把 pip 本体也装进 venv，否则 /bin/pip 不存在
+## ↓↓↓ Change: added --seed so uv also installs pip itself into venv, otherwise /bin/pip doesn't exist
 #RUN uv venv --python 3.8 --seed $LIBERO_VENV
 #
 #COPY third_party/openpi/packages/openpi-client/ /tmp/openpi-client/
@@ -248,8 +248,8 @@ CMD ["/bin/bash"]
 #        -r /tmp/req-libero-lib.txt \
 #        --extra-index-url https://download.pytorch.org/whl/cu113
 #
-## ── 在 3.8 环境里也装 ipykernel，然后注册到 Jupyter ──────────────────────────
-## 这样你在 Jupyter 界面里可以自由切换 3.11 和 3.8 两个 kernel
+## ── Install ipykernel in the 3.8 env and register with Jupyter ───────────────
+## This allows switching between the 3.11 and 3.8 kernels in the Jupyter UI
 #RUN --mount=type=cache,target=/root/.cache/uv \
 #    uv pip install --python $LIBERO_VENV ipykernel && \
 #    $LIBERO_VENV/bin/python -m ipykernel install \
@@ -257,12 +257,12 @@ CMD ["/bin/bash"]
 #        --display-name "Python 3.8 (LIBERO)" \
 #        --prefix /.venv
 #
-## ── MuJoCo headless 渲染 (EGL) ────────────────────────────────────────────────
+## ── MuJoCo headless rendering (EGL) ──────────────────────────────────────────
 #RUN mkdir -p /usr/share/glvnd/egl_vendor.d && \
 #    printf '{"file_format_version":"1.0.0","ICD":{"library_path":"libEGL_nvidia.so.0"}}\n' \
 #        > /usr/share/glvnd/egl_vendor.d/10_nvidia.json
 #
-## ── LIBERO 配置文件 ───────────────────────────────────────────────────────────
+## ── LIBERO configuration files ───────────────────────────────────────────────
 #ENV LIBERO_CONFIG_PATH=/opt/libero_config
 #RUN mkdir -p /opt/libero_config && cat > /opt/libero_config/config.yaml << 'YAML_EOF'
 #benchmark_root: /app/third_party/openpi/third_party/libero/libero/libero
