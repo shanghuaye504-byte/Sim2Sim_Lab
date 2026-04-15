@@ -14,7 +14,8 @@ Please use the following command:
 
 ```bash
 # Clone the repository and recursively initialize all submodules
-git clone --recursive [https://github.com/your-username/Sim2Sim_Lab.git](https://github.com/your-username/Sim2Sim_Lab.git)```
+git clone --recursive [https://github.com/your-username/Sim2Sim_Lab.git](https://github.com/your-username/Sim2Sim_Lab.git)
+```
 (Note: If you have already cloned the repository without the --recursive flag, you can fetch the submodules by running git submodule update --init --recursive inside the project folder).
 
 🌟 Core Features & Supported Domain Shifts
