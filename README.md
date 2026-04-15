@@ -4,7 +4,7 @@ Sim2Sim_Lab is an experimental framework designed for zero-shot domain shift eva
 
 Because the underlying Robosuite environment used by LIBERO performs a "hard reset" (completely rebuilding MuJoCo simulation objects from XML) every time `env.reset()` is called, standard modifications to model parameters are lost between episodes. This project solves this issue by using dynamic injection and monkey-patching techniques to intercept the environment reset process at runtime. It automatically reapplies physical and visual domain shift configurations, enabling efficient batch testing of policy robustness.
 
----
+
 
 ## 📥 Installation: Cloning the Repository
 
