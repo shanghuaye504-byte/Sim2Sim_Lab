@@ -43,7 +43,8 @@ Important: Before starting the Docker container, you must navigate to the root d
 cd Sim2Sim_Lab
 
 # Step 2: Build and start the container in detached mode using docker-compose
-docker compose -f docker/docker-compose.yml up -d```
+docker compose -f docker/docker-compose.yml up -d
+```
 2. Entrypoint Script Details
 
 Once the container is launched via docker-compose, the included entrypoint.sh script automatically performs the following initialization steps:
@@ -66,7 +67,8 @@ CHECKPOINTS=(
     # Format: "OpenPI_Policy_Config_Name|Path_to_Model_Weights"
     "pi05_libero|gs://openpi-assets/checkpoints/pi05_libero"
     "my_custom_policy|/app/data/checkpoints/my_custom_policy_v1"
-)```
+)
+```
 2. Starting Batch Tests
 
 After configuring the task suites (TASK_SUITES) and the domain configuration directory (DOMAIN_CONFIG_DIR) in run_batch.sh, simply run:
@@ -76,7 +78,8 @@ After configuring the task suites (TASK_SUITES) and the domain configuration dir
 bash /app/eval/run_batch.sh
 
 # Or override the number of trials via environment variables
-NUM_TRIALS=50 bash /app/eval/run_batch.sh```
+NUM_TRIALS=50 bash /app/eval/run_batch.sh
+```
 The script will automatically iterate through all Checkpoints, Task Suites, and Domain Shift levels (weak, medium, strong). Upon completion, it will generate a summarized CSV table in the RESULTS_ROOT directory.
 
 🎨 How to Implement a New Domain Shift
@@ -108,7 +111,8 @@ levels:
         - name: "agentview"
           pos_offset: [0.2, 0.05, 0.0]
           euler_offset_deg: [0.0, 10.0, 0.0]
-          fovy_offset: 10.0```
+          fovy_offset: 10.0
+```
 Supported Configuration Fields Reference
 
 lighting: diffuse_scale, specular_scale, ambient_scale, direction_offset, color_shift, castshadow.
